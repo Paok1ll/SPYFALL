@@ -349,7 +349,7 @@ def finish_round(lobby: Lobby, spy_win: bool, reason: str):
 
 
 if __name__ == "__main__":
-    import eventlet
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000)
+
 
 
