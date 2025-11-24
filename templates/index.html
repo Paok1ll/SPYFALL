@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <title>SpyFall</title>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+
+    <style>
+        :root {
+            --bg: radial-gradient(circle at top left, #1f2933, #020617);
+            --accent: #6366f1;
+            --accent2: #a855f7;
+            --accent-glow: rgba(99,102,241,0.4);
+            --danger: #fb7185;
+            --danger-glow: rgba(248,113,113,0.4);
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --radius-lg: 20px;
+            --shadow-soft: 0 28px 60px rgba(0,0,0,0.7);
+            --ui-scale: 1;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .app-wrap {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .app {
+            width: 100%;
+            max-width: 1700px;
+            min-height: 92vh;
+            background: rgba(15,23,42,0.96);
+            border-radius: 28px;
+            padding: 38px 44px;
+            border: 1px solid rgba(148,163,184,0.35);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .header-main { flex: 1; }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .title {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: 0.19em;
+            text-transform: uppercase;
+        }
+        .subtitle {
+            font-size: 15px;
+            color: var(--text-muted);
+        }
+
+        .badge {
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(148,163,184,0.5);
+            letter-spacing: 0.14em;
+        }
+
+        .screen { display: none; }
+        .screen.active { display: block; }
+
+        #screen-home .row {
+            min-height: 480px;
+        }
+
+        .glass {
+            background: rgba(20,28,48,0.96);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(148,163,184,0.4);
+            box-shadow: var(--shadow-soft);
+            padding: 22px 26px;
+        }
+
+        .row {
+            display: flex;
+            gap: 24px;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 900px) {
+            .row { flex-direction: column; }
+            .app { padding: 20px; }
+        }
+
+        .field-label {
+            font-size: 13px;
+            letter-spacing: 0.16em;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 15px;
+            border-radius: 999px;
+            border: 1px solid rgba(148,163,184,0.6);
+            background: #020617;
+            color: var(--text-main);
+        }
+
+        input::placeholder {
+            color: #6b7280;
+        }
+
+        .small {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        button {
+            border-radius: 999px;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            letter-spacing: 0.09em;
+            font-weight: 600;
+            transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, opacity 0.12s ease;
+        }
+
+        button.primary {
+            background: radial-gradient(circle at 20% 0, var(--accent2), var(--accent));
+            color: white;
+            box-shadow: 0 12px 30px var(--accent-glow);
+        }
+
+        button.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 18px 40px var(--accent-glow);
+        }
+
+        button.ghost {
+            border: 1px solid rgba(148,163,184,0.6);
+            background: transparent;
+            color: var(--text-main);
+        }
+
+        button.ghost:hover {
+            background: rgba(15,23,42,0.8);
+        }
+
+        button.icon {
+            padding: 6px 10px;
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        button.glow-danger {
+            background: radial-gradient(circle at 20% 0, #fb7185, #b91c1c);
+            color: #fff;
+            box-shadow: 0 12px 32px var(--danger-glow);
+        }
+
+        button.glow-danger:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 18px 40px var(--danger-glow);
+        }
+
+        .players-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 6px;
+            padding: 0;
+            list-style: none;
+        }
+
+        .player-pill {
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(148,163,184,0.6);
+            background: rgba(15,23,42,0.95);
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chip {
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(148,163,184,0.18);
+            font-size: 12px;
+        }
+        .chip.host { background: rgba(52,211,153,0.2); color:#a7f3d0; }
+        .chip.spy  { background: rgba(248,113,113,0.2); color:#fecaca; }
+
+        .top-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .flex-spacer { flex: 1; }
+
+        /* ---------------------------------------------------------- */
+        /* ---------------------- НОВЫЙ card-location ---------------- */
+        /* ---------------------------------------------------------- */
+
+        .card-location {
+            position: relative;
+
+            width: 100%;
+            max-width: 1300px;
+            height: 520px;
+
+            border-radius: 28px;
+            overflow: hidden;
+
+            background: #020617;
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+
+            display: flex;
+            align-items: flex-end;
+
+            box-shadow: 0 40px 90px rgba(0,0,0,0.65);
+
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 20px;
+        }
+
+        .card-location::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-size: cover !important;
+            background-position: center !important;
+
+            filter: blur(1px);
+            opacity: 0.22;
+            z-index: 0;
+        }
+
+        .card-location-inner {
+            position: relative;
+            z-index: 2;
+
+            width: 100%;
+            padding: 26px 32px;
+
+            background: linear-gradient(
+                to top,
+                rgba(15,23,42,1) 0%,
+                rgba(15,23,42,0.55) 55%,
+                rgba(15,23,42,0.0) 100%
+            );
+
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .card-location-title {
+            font-size: 32px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .badge-role {
+            font-size: 13px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            background: rgba(129,140,248,0.2);
+            color: #c7d2fe;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+        }
+
+        .badge-role.spy {
+            background: rgba(248,113,113,0.2);
+            color: #fecaca;
+        }
+
+        /* ---------------------------------------------------------- */
+
+        .card-fall {
+            animation: cardFall 0.45s ease-out;
+        }
+
+        @keyframes cardFall {
+            0% { transform: translateY(-40px) scale(.96); opacity: 0; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        .list-column {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .order-list { list-style: none; padding: 0; margin: 0; }
+
+        .order-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 8px;
+            border-radius: 999px;
+            background: rgba(15,23,42,0.97);
+            border: 1px solid rgba(148,163,184,0.6);
+            margin-bottom: 4px;
+            font-size: 13px;
+        }
+
+        .order-index {
+            width: 18px;
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .timer-pill {
+            font-size: 13px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(15,23,42,0.97);
+            border: 1px solid rgba(148,163,184,0.7);
+        }
+
+        .timer-pill.danger {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .panel-spy, .vote-panel {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: var(--radius-lg);
+            background: rgba(15,23,42,0.96);
+            border: 1px solid rgba(148,163,184,0.7);
+        }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .tag-location {
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(15,23,42,0.98);
+            border: 1px solid rgba(148,163,184,0.7);
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: opacity 0.2s ease, text-decoration-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .tag-location.crossed {
+            opacity: 0.25;
+            text-decoration: line-through;
+            text-decoration-color: rgba(248,113,113,0.7);
+        }
+
+        .tag-location.crossed.fade {
+            animation: fadeCross 0.35s ease-out;
+        }
+
+        @keyframes fadeCross {
+            0% { opacity: 1; }
+            100% { opacity: 0.25; }
+        }
+
+        .vote-target {
+            padding: 6px 8px;
+            border-radius: 12px;
+            border: 1px solid rgba(148,163,184,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            cursor: pointer;
+            margin-bottom: 4px;
+        }
+
+        .vote-target:hover { background: rgba(31,41,55,0.9); }
+
+        .vote-progress {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            background: rgba(15,23,42,0.98);
+            border-radius: 999px;
+            padding: 8px 14px;
+            border: 1px solid rgba(148,163,184,0.7);
+            font-size: 12px;
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            z-index: 99999;
+        }
+
+        .toast.show { opacity: 1; transform: translateY(0); }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(6px);
+            z-index: 9998;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal {
+            width: 90%;
+            max-width: 700px;
+            max-height: 80vh;
+            background: #020617;
+            border-radius: 22px;
+            border: 1px solid rgba(148,163,184,0.6);
+            box-shadow: 0 26px 60px rgba(0,0,0,0.8);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .guess-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .guess-card {
+            perspective: 800px;
+        }
+
+        .guess-card-inner {
+            position: relative;
+            width: 100%;
+            height: 140px;
+            border-radius: 16px;
+            background: #111827;
+            border: 1px solid rgba(148,163,184,0.5);
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .guess-card-inner:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(15,23,42,0.9);
+        }
+
+        .guess-card-inner.flipping {
+            animation: flipCard 0.32s ease-out;
+        }
+
+        @keyframes flipCard {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(180deg) scale(0.95); }
+        }
+
+        .guess-card-img {
+            width: 100%;
+            height: 90px;
+            background-position: center;
+            background-size: cover;
+            background-repeat: no-repeat;
+        }
+
+        .guess-card-body {
+            padding: 6px 8px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        #modal-settings .modal {
+            max-width: 420px;
+        }
+
+        .settings-row {
+            margin-bottom: 8px;
+        }
+
+        .settings-row label {
+            font-size: 13px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .settings-row select,
+        .settings-row input[type="range"] {
+            width: 100%;
+        }
+
+        #modal-victory .modal {
+            max-width: 480px;
+            text-align: center;
+            padding: 20px 18px 16px;
+        }
+
+        .victory-title {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .victory-sub {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .victory-info {
+            text-align: left;
+            background: rgba(15,23,42,0.96);
+            border-radius: 18px;
+            border: 1px solid rgba(148,163,184,0.6);
+            padding: 10px 12px;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        .victory-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .victory-label {
+            color: var(--text-muted);
+        }
+
+        .victory-value {
+            font-weight: 600;
+        }
+
+        .victory-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        .victory-buttons button {
+            min-width: 140px;
+        }
+    </style>
+</head>
+<body>
+<div class="app-wrap">
+    <div class="app">
+        <div class="header">
+            <div class="header-main">
+                <div class="title" data-i18n="title">SPYFALL</div>
+                <div class="subtitle" data-i18n="subtitle">
+                    Онлайн игра на дедукцию: один шпион, одна локация, много подозрений
+                </div>
+            </div>
+            <div class="header-right">
+                <span class="badge" id="status-badge">HOME</span>
+                <button class="ghost icon" id="btn-settings" title="Settings">⚙</button>
+            </div>
+        </div>
+
+        <div id="screen-home" class="screen active">
+            <div class="row">
+                <div class="glass" style="flex:1.4;">
+                    <div class="field-label" data-i18n="label_nick">Никнейм</div>
+                    <div class="field">
+                        <input id="nick" data-i18n-placeholder="ph_nick" placeholder="Agent007" />
+                    </div>
+
+                    <div class="field-label" data-i18n="label_code">Код лобби</div>
+                    <div class="field">
+                        <input id="code" data-i18n-placeholder="ph_code" placeholder="ABCD" />
+                    </div>
+
+                    <div style="display:flex; gap:8px; margin-top:10px;">
+                        <button class="primary" id="btn-join" data-i18n="btn_join">Войти</button>
+                        <button class="ghost" id="btn-create" data-i18n="btn_create">Создать</button>
+                    </div>
+                    <div class="small" style="margin-top:8px;" data-i18n="home_hint">
+                        Создай лобби, скинь код друзьям, собери минимум трёх игроков и запускай раунд.
+                    </div>
+                </div>
+
+                <div class="glass" style="flex:1;">
+                    <div class="field-label" data-i18n="howto_title">Как играть</div>
+                    <div class="small" data-i18n="howto_text">
+                        Все, кроме шпиона, видят одну и ту же локацию. Шпион не знает место и пытается
+                        угадать его по вопросам и ответам. Мирные могут проголосовать, чтобы выгнать подозреваемого.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-lobby" class="screen">
+            <div class="glass">
+                <div class="top-row">
+                    <div class="field-label" data-i18n="lobby_title">Лобби</div>
+                    <div class="badge" id="lobby-code-badge">----</div>
+                    <div class="flex-spacer"></div>
+                    <button class="ghost" id="btn-back-home" data-i18n="btn_leave">Выйти</button>
+                </div>
+
+                <div class="row">
+                    <div style="flex:1;">
+                        <div class="field-label" data-i18n="label_players">Игроки</div>
+                        <ul id="players-list" class="players-list"></ul>
+                    </div>
+                    <div style="flex:1;">
+                        <div class="field-label" data-i18n="label_control">Управление</div>
+                        <div class="small" data-i18n="lobby_hint">
+                            Хост запускает раунд. Остальные просто ждут начала.
+                        </div>
+                        <button class="primary" id="btn-start" data-i18n="btn_start_round">Запустить раунд</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-game" class="screen">
+            <div class="glass">
+                <div class="top-row">
+                    <div class="badge" id="game-lobby-code">----</div>
+                    <div class="timer-pill" id="timer-pill">--:--</div>
+                    <div class="flex-spacer"></div>
+                    <button class="ghost" id="btn-game-lobby" data-i18n="btn_lobby">Лобби</button>
+                </div>
+
+                <div class="row">
+                    <div style="flex:1.6;">
+                        <div class="card-location card-fall" id="location-card">
+                            <div class="card-location-inner">
+                                <div class="card-location-label" id="location-label" data-i18n="loc_label">
+                                    Локация
+                                </div>
+                                <div class="card-location-title">
+                                    <span id="location-icon">❓</span>
+                                    <span id="location-name">Ожидание...</span>
+                                </div>
+                                <div style="margin-top:6px;">
+                                    <span class="badge-role" id="role-badge">AGENT</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel-spy" id="spy-panel" style="display:none;">
+                            <div class="field-label" data-i18n="spy_list_title">Список локаций</div>
+                            <div class="small" data-i18n="spy_list_hint">
+                                Нажимай на локации, чтобы вычёркивать их (видишь только ты).
+                            </div>
+                            <div class="tags" id="spy-tags"></div>
+                            <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+                                <button id="btn-guess" class="glow-danger" data-i18n="btn_guess">
+                                    Угадать локацию
+                                </button>
+                                <span class="small" id="guess-status"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="list-column" style="flex:1.1;">
+                        <div>
+                            <div class="field-label" data-i18n="order_title">Порядок ответов</div>
+                            <ul id="order-list" class="order-list"></ul>
+                        </div>
+
+                        <div>
+                            <div class="field-label" data-i18n="vote_title">Голосование</div>
+                            <button class="ghost" id="btn-open-vote" data-i18n="btn_vote_open">
+                                Начать голосование
+                            </button>
+                            <div class="vote-panel" id="vote-panel" style="display:none;">
+                                <div class="small">
+                                    <span data-i18n="vote_hint">Выбери, кого считаешь шпионом. Нужно голосов:</span>
+                                    <span id="vote-threshold">-</span>
+                                </div>
+                                <div id="vote-targets"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="field-label" data-i18n="score_title">Счёт</div>
+                            <ul id="score-list" class="players-list"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="modal-guess" class="modal-overlay">
+    <div class="modal">
+        <div class="field-label" data-i18n="guess_modal_title">Выбор локации</div>
+        <div class="small" data-i18n="guess_modal_hint">
+            Нажми по карточке локации, которую считаешь правильной.
+        </div>
+        <div id="guess-grid" class="guess-grid"></div>
+        <div style="text-align:center; margin-top:10px;">
+            <button class="ghost" onclick="closeGuessModal()" data-i18n="btn_cancel">Отмена</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-settings" class="modal-overlay">
+    <div class="modal">
+        <div class="field-label" data-i18n="settings_title">Настройки</div>
+        <div class="settings-row">
+            <label for="lang-select" data-i18n="settings_lang">Язык интерфейса</label>
+            <select id="lang-select">
+                <option value="ru">Русский</option>
+                <option value="ua">Українська</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+        <div class="settings-row">
+            <label for="ui-scale-range" data-i18n="settings_scale">Масштаб UI</label>
+            <input id="ui-scale-range" type="range" min="0.85" max="1.15" step="0.05" />
+            <div class="small" id="ui-scale-label">100%</div>
+        </div>
+        <div style="text-align:right; margin-top:8px;">
+            <button class="ghost" onclick="closeSettings()" data-i18n="btn_close">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-victory" class="modal-overlay">
+    <div class="modal">
+        <div class="victory-title" id="victory-title">SPY WINS</div>
+        <div class="victory-sub" id="victory-sub">Раунд завершён</div>
+        <div class="victory-info">
+            <div class="victory-row">
+                <span class="victory-label" data-i18n="label_spy">Шпион</span>
+                <span class="victory-value" id="victory-spy">?</span>
+            </div>
+            <div class="victory-row">
+                <span class="victory-label" data-i18n="label_location">Локация</span>
+                <span class="victory-value" id="victory-location">?</span>
+            </div>
+            <div class="victory-row">
+                <span class="victory-label" data-i18n="finish_reason_label">Причина</span>
+                <span class="victory-value" id="victory-reason">?</span>
+            </div>
+        </div>
+        <div class="victory-buttons">
+            <button class="ghost" id="btn-victory-lobby" data-i18n="btn_victory_lobby">В лобби</button>
+            <button class="primary" id="btn-victory-next" data-i18n="btn_victory_next">Следующий раунд</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+    const $ = id => document.getElementById(id);
+
+    let currentLang = localStorage.getItem("spyfall_lang") || "ru";
+    let uiScale = parseFloat(localStorage.getItem("spyfall_scale") || "1") || 1;
+
+    const i18n = {
+        ru: {
+            title: "SPYFALL",
+            subtitle: "Онлайн игра на дедукцию: один шпион, одна локация, много подозрений",
+            label_nick: "Никнейм",
+            label_code: "Код лобби",
+            ph_nick: "Agent007",
+            ph_code: "ABCD",
+            btn_join: "Войти",
+            btn_create: "Создать",
+            home_hint: "Создай лобби, скинь код друзьям, собери минимум трёх игроков и запускай раунд.",
+            howto_title: "Как играть",
+            howto_text: "Все, кроме шпиона, видят одну и ту же локацию. Шпион не знает место и пытается угадать его по вопросам и ответам. Мирные могут проголосовать, чтобы выгнать подозреваемого.",
+            lobby_title: "Лобби",
+            btn_leave: "Выйти",
+            label_players: "Игроки",
+            label_control: "Управление",
+            lobby_hint: "Хост запускает раунд. Остальные ждут начала.",
+            btn_start_round: "Запустить раунд",
+            btn_lobby: "Лобби",
+            loc_label: "Локация",
+            spy_list_title: "Список локаций",
+            spy_list_hint: "Нажимай на локации, чтобы вычёркивать их (видишь только ты).",
+            btn_guess: "Угадать локацию",
+            order_title: "Порядок ответов",
+            vote_title: "Голосование",
+            btn_vote_open: "Начать голосование",
+            vote_hint: "Выбери, кого считаешь шпионом. Нужно голосов:",
+            score_title: "Счёт",
+            guess_modal_title: "Выбор локации",
+            guess_modal_hint: "Нажми по карточке локации, которую считаешь правильной.",
+            btn_cancel: "Отмена",
+            settings_title: "Настройки",
+            settings_lang: "Язык интерфейса",
+            settings_scale: "Масштаб UI",
+            btn_close: "Закрыть",
+            toast_lobby_not_found: "Лобби не найдено",
+            toast_need_players: "Нужно минимум 3 игрока",
+            finish_spy_win: "Шпион выиграл",
+            finish_agents_win: "Мирные выиграли",
+            finish_reason_spy_guess: "Шпион попытался угадать локацию",
+            finish_reason_timeout: "Время раунда истекло",
+            finish_reason_vote_correct: "Мирные выгнали настоящего шпиона",
+            finish_reason_vote_wrong: "Мирные ошиблись в голосовании",
+            finish_reason_other: "Раунд завершён",
+            finish_reason_label: "Причина",
+            label_spy: "Шпион",
+            label_location: "Локация",
+            btn_victory_lobby: "В лобби",
+            btn_victory_next: "Следующий раунд"
+        }
+    };
+
+    const locationNames = {
+        mall: { ru: "Торговый центр" },
+        aquapark: { ru: "Аквапарк" },
+        airport: { ru: "Аэропорт" },
+        train_station: { ru: "Вокзал" },
+        bus_station: { ru: "Автобусная станция" },
+        metro: { ru: "Метро" },
+        police: { ru: "Полицейский участок" },
+        hospital: { ru: "Больница" },
+        fire_station: { ru: "Пожарная станция" },
+        car_wash: { ru: "Автомойка" },
+        barbershop: { ru: "Парикмахерская" },
+        school: { ru: "Школа" },
+        university: { ru: "Университет" },
+        office_building: { ru: "Офисное здание" },
+        music_school: { ru: "Музыкальная школа" },
+        post_office: { ru: "Почта" },
+        bank: { ru: "Банк" },
+        night_club: { ru: "Ночной клуб" },
+        restaurant: { ru: "Ресторан" },
+        cafe: { ru: "Кафе" },
+        bar: { ru: "Бар" },
+        cinema: { ru: "Кинотеатр" },
+        gym: { ru: "Спортзал" },
+        football_stadium: { ru: "Футбольный стадион" },
+        basketball_court: { ru: "Баскетбольная площадка" },
+        tennis_court: { ru: "Теннисный корт" },
+        pool: { ru: "Бассейн" },
+        skate_park: { ru: "Скейт-парк" },
+        bowling_club: { ru: "Боуллинг-клуб" },
+        passenger_train: { ru: "Пассажирский поезд" },
+        cruise_ship: { ru: "Круизный корабль" },
+        cargo_ship: { ru: "Грузовой корабль" },
+        airplane: { ru: "Самолёт" },
+        submarine: { ru: "Подводная лодка" },
+        space_station: { ru: "Космическая станция" },
+        factory: { ru: "Завод" },
+        construction_site: { ru: "Строительная площадка" },
+        farm: { ru: "Ферма" },
+        bakery: { ru: "Пекарня" },
+        tv_studio: { ru: "Телестудия" },
+        radio_station: { ru: "Радиостанция" },
+        fire_department: { ru: "Пожарная часть" },
+        court: { ru: "Суд" },
+        beach: { ru: "Пляж" },
+        forest: { ru: "Лес" },
+        mountain: { ru: "Гора" },
+        camp: { ru: "Лагерь" },
+        fishing_base: { ru: "Рыболовная база" },
+        amusement_park: { ru: "Парк аттракционов" },
+        zoo: { ru: "Зоопарк" },
+        aquarium: { ru: "Аквариум" },
+        military_base: { ru: "Военная база" },
+        laboratory: { ru: "Лаборатория" },
+        bunker: { ru: "Бункер" },
+        prison: { ru: "Тюрьма" },
+        castle: { ru: "Замок" },
+        magic_school: { ru: "Магическая школа" }
+    };
+
+    function t(key) {
+        return (i18n[currentLang] && i18n[currentLang][key]) ||
+               (i18n["ru"] && i18n["ru"][key]) ||
+               key;
+    }
+
+    function getLocationName(id) {
+        const obj = locationNames[id];
+        if (!obj) return id || "?";
+        return obj[currentLang] || obj["ru"] || id;
+    }
+
+    function applyI18n() {
+        document.documentElement.lang = currentLang;
+        document.querySelectorAll("[data-i18n]").forEach(el => {
+            const key = el.getAttribute("data-i18n");
+            el.textContent = t(key);
+        });
+        document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+            const key = el.getAttribute("data-i18n-placeholder");
+            el.placeholder = t(key);
+        });
+    }
+
+    function applyScale() {
+        const label = $("ui-scale-label");
+        if (label) label.textContent = Math.round(uiScale * 100) + "%";
+    }
+
+    const socket = io("http://localhost:5000");
+    let sid = null;
+    let lobbyCode = null;
+    let myRole = null;
+    let myIsSpy = false;
+    let lastLobbyData = null;
+    let voteThreshold = 0;
+    let windowLastCards = [];
+
+    socket.on("connect", () => {
+        sid = socket.id;
+    });
+
+    function showScreen(id) {
+        ["screen-home", "screen-lobby", "screen-game"].forEach(x =>
+            $(x).classList.remove("active")
+        );
+        $(id).classList.add("active");
+        $("status-badge").textContent = id.replace("screen-", "").toUpperCase();
+    }
+
+    function showToast(msg) {
+        const tEl = $("toast");
+        tEl.textContent = msg;
+        tEl.classList.add("show");
+        setTimeout(() => tEl.classList.remove("show"), 1800);
+    }
+
+    $("btn-create").onclick = () => {
+        socket.emit("create", {
+            nick: $("nick").value || "Player",
+            sid
+        });
+    };
+
+    $("btn-join").onclick = () => {
+        socket.emit("join", {
+            nick: $("nick").value || "Player",
+            sid,
+            code: $("code").value || ""
+        });
+    };
+
+    $("btn-back-home").onclick = () => {
+        lobbyCode = null;
+        showScreen("screen-home");
+    };
+
+    $("btn-start").onclick = () => {
+        if (!lobbyCode) return;
+        socket.emit("start", { code: lobbyCode, sid });
+    };
+
+    socket.on("joined", data => {
+        const lobby = data.lobby;
+        lobbyCode = lobby.code;
+        lastLobbyData = lobby;
+        $("lobby-code-badge").textContent = lobby.code;
+        renderPlayers(lobby);
+        renderScores(lobby);
+        showScreen("screen-lobby");
+    });
+
+    socket.on("update", data => {
+        lastLobbyData = data.lobby;
+        if (!lobbyCode) lobbyCode = data.lobby.code;
+        $("lobby-code-badge").textContent = data.lobby.code;
+        renderPlayers(data.lobby);
+        renderScores(data.lobby);
+    });
+
+    socket.on("error", data => {
+        if (data && data.msg) showToast(data.msg);
+    });
+
+    function renderPlayers(lobby) {
+        const ul = $("players-list");
+        ul.innerHTML = "";
+        (lobby.players || []).forEach(p => {
+            const li = document.createElement("li");
+            li.className = "player-pill";
+            li.innerHTML =
+                "<span>" + p.nick + "</span>" +
+                '<span class="chip">' + p.score + "</span>" +
+                (p.isSpy ? '<span class="chip spy">' + t("label_spy") + "</span>" : "") +
+                (p.sid === lobby.host ? '<span class="chip host">HOST</span>' : "");
+            ul.appendChild(li);
+        });
+    }
+
+    function renderScores(lobby) {
+        const ul = $("score-list");
+        ul.innerHTML = "";
+        (lobby.players || [])
+            .slice()
+            .sort((a, b) => b.score - a.score)
+            .forEach(p => {
+                const li = document.createElement("li");
+                li.className = "player-pill";
+                li.innerHTML = "<span>" + p.nick + "</span><span class=\"chip\">" + p.score + "</span>";
+                ul.appendChild(li);
+            });
+    }
+
+    socket.on("round", data => {
+        myRole = data.role;
+        myIsSpy = data.role === "spy";
+        windowLastCards = data.cards || [];
+        voteThreshold = 0;
+        $("vote-panel").style.display = "none";
+        $("vote-targets").innerHTML = "";
+        $("guess-status").textContent = "";
+        $("btn-guess").disabled = false;
+
+        $("game-lobby-code").textContent = lobbyCode || "----";
+
+        const locCard = $("location-card");
+        locCard.classList.remove("card-fall");
+        void locCard.offsetWidth;
+        locCard.classList.add("card-fall");
+
+        if (myIsSpy) {
+            $("location-label").textContent = t("label_spy");
+            $("location-name").textContent = "...";
+            $("location-icon").textContent = "🕵️";
+            $("role-badge").textContent = "SPY";
+            $("role-badge").classList.add("spy");
+            locCard.style.backgroundImage = "linear-gradient(135deg,#4b5563,#020617)";
+        } else {
+            const loc = data.location || {};
+            const name = getLocationName(loc.id);
+            $("location-label").textContent = t("loc_label");
+            $("location-name").textContent = name;
+            $("location-icon").textContent = loc.icon || "📍";
+            $("role-badge").textContent = "AGENT";
+            $("role-badge").classList.remove("spy");
+            locCard.style.backgroundImage = `url("/static/cards/${loc.id}.png")`;
+        }
+
+        const orderList = $("order-list");
+        orderList.innerHTML = "";
+        (data.order || []).forEach((nick, idx) => {
+            const li = document.createElement("li");
+            li.className = "order-item";
+            li.innerHTML =
+                '<span class="order-index">' + (idx + 1) + "</span>" +
+                "<span>" + nick + "</span>";
+            orderList.appendChild(li);
+        });
+
+        const spyPanel = $("spy-panel");
+        const tagsWrap = $("spy-tags");
+        tagsWrap.innerHTML = "";
+        if (myIsSpy) {
+            spyPanel.style.display = "block";
+            (data.cards || []).forEach(loc => {
+                const tag = document.createElement("div");
+                tag.className = "tag-location";
+                tag.innerHTML = "<span>" + (loc.icon || "📍") + "</span><span>" + getLocationName(loc.id) + "</span>";
+                tag.dataset.id = loc.id;
+                tag.addEventListener("click", () => {
+                    if (tag.classList.contains("crossed")) {
+                        tag.classList.remove("crossed");
+                    } else {
+                        tag.classList.add("crossed", "fade");
+                        setTimeout(() => tag.classList.remove("fade"), 350);
+                    }
+                });
+                tagsWrap.appendChild(tag);
+            });
+        } else {
+            spyPanel.style.display = "none";
+        }
+
+        $("btn-open-vote").disabled = myIsSpy;
+
+        updateTimer(data.duration || 0);
+
+        if (lastLobbyData) renderScores(lastLobbyData);
+
+        showScreen("screen-game");
+    });
+
+    function updateTimer(sec) {
+        const pill = $("timer-pill");
+        const s = Math.max(0, sec | 0);
+        const m = String(Math.floor(s / 60)).padStart(2, "0");
+        const r = String(s % 60).padStart(2, "0");
+        pill.textContent = m + ":" + r;
+        pill.classList.toggle("danger", s <= 10);
+    }
+
+    socket.on("timer", data => {
+        updateTimer(data.remaining);
+    });
+
+    $("btn-guess").onclick = () => {
+        if (!myIsSpy) return;
+        openGuessModal();
+    };
+
+    function openGuessModal() {
+        const cards = windowLastCards || [];
+        const grid = $("guess-grid");
+        grid.innerHTML = "";
+        cards.forEach(loc => {
+            const wrap = document.createElement("div");
+            wrap.className = "guess-card";
+
+            const inner = document.createElement("div");
+            inner.className = "guess-card-inner";
+
+            const img = document.createElement("div");
+            img.className = "guess-card-img";
+            img.style.backgroundImage = `url("/static/cards/${loc.id}.png")`;
+
+            const body = document.createElement("div");
+            body.className = "guess-card-body";
+            body.innerHTML = "<span>" + (loc.icon || "📍") + "</span><span>" + getLocationName(loc.id) + "</span>";
+
+            inner.appendChild(img);
+            inner.appendChild(body);
+
+            inner.onclick = () => {
+                if (!myIsSpy) return;
+                inner.classList.add("flipping");
+                setTimeout(() => {
+                    guessLocation(loc.id);
+                }, 200);
+            };
+
+            wrap.appendChild(inner);
+            grid.appendChild(wrap);
+        });
+
+        $("modal-guess").style.display = "flex";
+    }
+
+    function closeGuessModal() {
+        $("modal-guess").style.display = "none";
+    }
+
+    function guessLocation(id) {
+        $("guess-status").textContent = "Ожидание результата...";
+        $("btn-guess").disabled = true;
+        closeGuessModal();
+
+        socket.emit("guess", {
+            code: lobbyCode,
+            sid,
+            loc: id
+        });
+    }
+
+    $("btn-open-vote").onclick = () => {
+        if (myIsSpy) return;
+        if (!lastLobbyData) return;
+        const panel = $("vote-panel");
+        const box = $("vote-targets");
+        if (panel.style.display === "block") {
+            panel.style.display = "none";
+            return;
+        }
+        panel.style.display = "block";
+        box.innerHTML = "";
+
+        const players = lastLobbyData.players || [];
+        const totalPlayers = players.length;
+        voteThreshold = Math.max(2, totalPlayers - 1);
+        $("vote-threshold").textContent = voteThreshold;
+
+        players.forEach(p => {
+            const div = document.createElement("div");
+            div.className = "vote-target";
+            div.dataset.sid = p.sid;
+            div.innerHTML =
+                "<span>" + p.nick + "</span>" +
+                '<span class="vote-progress" id="vote-count-' + p.sid + '">0/' + voteThreshold + "</span>";
+            div.onclick = () => {
+                if (myIsSpy) return;
+                if (!lobbyCode) return;
+                socket.emit("vote", {
+                    code: lobbyCode,
+                    sid,
+                    target: p.sid
+                });
+            };
+            box.appendChild(div);
+        });
+    };
+
+    socket.on("vote_update", data => {
+        voteThreshold = data.threshold;
+        const el = $("vote-count-" + data.target);
+        if (el) el.textContent = data.count + "/" + voteThreshold;
+    });
+
+    socket.on("finished", data => {
+        $("guess-status").textContent = "";
+        $("btn-guess").disabled = false;
+
+        const spyWin = data.spyWin;
+        const locationName = getLocationName(data.locationId);
+        const spyNames = (data.spyNames || []).join(", ") || "?";
+
+        let title = spyWin ? t("finish_spy_win") : t("finish_agents_win");
+        let reasonKey = "finish_reason_other";
+        if (data.reason === "spy_guess") reasonKey = "finish_reason_spy_guess";
+        else if (data.reason === "timeout") reasonKey = "finish_reason_timeout";
+        else if (data.reason === "vote_correct") reasonKey = "finish_reason_vote_correct";
+        else if (data.reason === "vote_wrong") reasonKey = "finish_reason_vote_wrong";
+
+        $("victory-title").textContent = title;
+        $("victory-sub").textContent = t("finish_reason_other");
+        $("victory-spy").textContent = spyNames;
+        $("victory-location").textContent = locationName;
+        $("victory-reason").textContent = t(reasonKey);
+
+        if (data.scores && lastLobbyData) {
+            (lastLobbyData.players || []).forEach(p => {
+                if (data.scores[p.sid] !== undefined) p.score = data.scores[p.sid];
+            });
+            renderScores(lastLobbyData);
+        }
+
+        const btnNext = $("btn-victory-next");
+        if (lastLobbyData && lastLobbyData.host === sid) {
+            btnNext.style.display = "inline-flex";
+            btnNext.disabled = false;
+        } else {
+            btnNext.style.display = "none";
+        }
+
+        $("modal-victory").style.display = "flex";
+    });
+
+    socket.on("go_lobby", data => {
+        lastLobbyData = data.lobby;
+        $("modal-victory").style.display = "none";
+        if (lastLobbyData) {
+            renderPlayers(lastLobbyData);
+            renderScores(lastLobbyData);
+        }
+        showScreen("screen-lobby");
+    });
+
+    function goToLobby() {
+        if (lastLobbyData) {
+            renderPlayers(lastLobbyData);
+            renderScores(lastLobbyData);
+            showScreen("screen-lobby");
+        } else {
+            showScreen("screen-home");
+        }
+    }
+
+    $("btn-game-lobby").onclick = () => {
+        goToLobby();
+    };
+
+    $("btn-victory-lobby").onclick = () => {
+        $("modal-victory").style.display = "none";
+        goToLobby();
+    };
+
+    $("btn-victory-next").onclick = () => {
+        if (!lobbyCode || !lastLobbyData) return;
+        $("btn-victory-next").disabled = true;
+        socket.emit("next_round", {
+            code: lobbyCode,
+            sid
+        });
+    };
+
+    $("btn-settings").onclick = () => {
+        openSettings();
+    };
+
+    function openSettings() {
+        $("lang-select").value = currentLang;
+        $("ui-scale-range").value = uiScale;
+        applyScale();
+        $("modal-settings").style.display = "flex";
+    }
+
+    function closeSettings() {
+        $("modal-settings").style.display = "none";
+    }
+
+    $("lang-select").onchange = () => {
+        currentLang = $("lang-select").value;
+        localStorage.setItem("spyfall_lang", currentLang);
+        applyI18n();
+    };
+
+    $("ui-scale-range").oninput = () => {
+        uiScale = parseFloat($("ui-scale-range").value || "1") || 1;
+        localStorage.setItem("spyfall_scale", String(uiScale));
+        applyScale();
+    };
+
+    applyI18n();
+    applyScale();
+    showScreen("screen-home");
+</script>
+</body>
+</html>
