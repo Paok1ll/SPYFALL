@@ -3,11 +3,13 @@ from flask_socketio import SocketIO, emit, join_room
 import random
 import string
 import time
+import threading
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "spyfall"
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+# ВАЖНО: БЕЗ EVENTLET
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 SPY_POINTS = 3
 TEAM_POINTS = 2
