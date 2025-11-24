@@ -3,7 +3,6 @@ from flask_socketio import SocketIO, emit, join_room
 import random
 import string
 import time
-import threading
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "spyfall"
@@ -352,4 +351,5 @@ def finish_round(lobby: Lobby, spy_win: bool, reason: str):
 if __name__ == "__main__":
     import eventlet
     socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+
 
